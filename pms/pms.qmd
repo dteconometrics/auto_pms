@@ -1,0 +1,282 @@
+---
+title: "Pesquisa Mensal de Serviços"
+author: 'Núcleo de Dados <br><span style = "font-size: 70%;">ADEPE<br><a href="https://github.com/dteconometrics">`r fontawesome::fa("github", fill = "#282f6b")`</a>&nbsp; <a href="https://www.linkedin.com/in/vinicius-limeira-565117180/">`r fontawesome::fa("linkedin", fill = "#282f6b")`</a>&nbsp; <a href="mailto:vinicius.valenca@adepe.pe.gov.br">`r fontawesome::fa("envelope", fill = "#282f6b")`</a>&nbsp; <a href="https://www.adepe.pe.gov.br/">`r fontawesome::fa("home", fill = "#282f6b")`</a></span>'
+format: 
+  revealjs:
+    logo: "img/adepe.jpg"
+    width: 1200
+    slide-number: true
+    theme: [solarized, personalizacoes.scss]
+---
+
+
+```{r setup, include=FALSE}
+options(htmltools.dir.version = FALSE)
+options(htmltools.preserve.raw = FALSE)
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning   = FALSE,  # exibir avisos do console?
+  message   = FALSE,  # exibir mensagens do console?
+  dpi       = 300,    # resolução
+  fig.align = "center"# alinhamento de imagens
+  )
+```
+
+```{r utils}
+
+## Pacotes utilizados nessa apresentação ------------
+
+library(tidyverse)
+library(scales)
+library(sidrar)
+library(knitr)
+library(tstools)
+library(ggthemes)
+library(DT)
+library(plotly)
+
+## Função ----------------
+
+acum_i <- function(data, n){
+  
+  data_ma_n <- RcppRoll::roll_meanr(data, n)
+  
+  data_lag_n <- dplyr::lag(data_ma_n, n)
+  
+  data_acum_n = (((data_ma_n/data_lag_n)-1)*100)
+  
+  return(data_acum_n)
+  
+}
+
+
+
+names <- c('date', 'receita', 'volume', 'receita_sa', 'volume_sa')
+
+foot_ibge <- "Fonte: ADEPE com dados do IBGE"
+
+
+```
+
+```{r nacional}
+
+## Coleta e Tratamento dos Dados --------------------
+
+tabpms = '/t/5906/n1/all/v/7167,7168/p/all/c11046/all/d/v7167%205,v7168%205' %>% 
+  sidrar::get_sidra(api = .) %>% 
+  mutate(date = parse_date(`Mês (Código)`, format = '%Y%m')) %>% 
+  dplyr::select(date, "Variável", "Tipos de índice", Valor) %>% 
+  pivot_wider(id_cols = date,
+              names_from = c("Variável", "Tipos de índice"),
+              values_from = Valor) %>% 
+  `colnames<-`(names) %>% 
+  dplyr::select(date, receita, receita_sa, volume, volume_sa) %>% 
+  as_tibble()
+
+
+
+## Criar métricas --------------
+tabpms =
+  tabpms %>%
+  mutate(margem_receita = (receita_sa/lag(receita_sa,1)-1)*100) %>%
+  mutate(margem_volume = (volume_sa/lag(volume_sa,1)-1)*100) %>%
+  mutate(interanual_receita = (receita/lag(receita,12)-1)*100) %>%
+  mutate(interanual_volume = (volume/lag(volume,12)-1)*100) %>%
+  mutate(anual_receita = acum_i(receita,12)) %>%
+  mutate(anual_volume = acum_i(volume,12))
+
+## Wide para long
+tabpms_long =
+  tabpms %>%
+  gather(variavel, valor, -date)
+
+
+```
+
+```{r pernambuco}
+
+## Coleta e Tratamento dos Dados ---------------------
+
+tabpms_pe = '/t/5906/n3/26/v/7167,7168/p/all/c11046/all/d/v7167%205,v7168%205' %>% 
+  sidrar::get_sidra(api=.) %>% 
+  mutate(date = parse_date(`Mês (Código)`, format = '%Y%m')) %>% 
+  dplyr::select(date, "Variável", "Tipos de índice", Valor) %>% 
+  pivot_wider(id_cols = date, 
+              names_from = c("Variável", "Tipos de índice"),
+              values_from = Valor) %>% 
+  `colnames<-`(names) %>% 
+  dplyr::select(date, receita, receita_sa, volume, volume_sa) %>% 
+  as_tibble()
+
+
+## Criar métricas -------------------
+  
+tabpms_pe =
+  tabpms_pe %>%
+  mutate(margem_receita = (receita_sa/lag(receita_sa,1)-1)*100) %>%
+  mutate(margem_volume = (volume_sa/lag(volume_sa,1)-1)*100) %>%
+  mutate(interanual_receita = (receita/lag(receita,12)-1)*100) %>%
+  mutate(interanual_volume = (volume/lag(volume,12)-1)*100) %>%
+  mutate(anual_receita = acum_i(receita,12)) %>%
+  mutate(anual_volume = acum_i(volume,12))
+
+## Wide para long
+tabpms_long =
+  tabpms_pe %>%
+  gather(variavel, valor, -date)
+
+
+```
+
+
+### Sumário {.smaller}
+
+
+- Sobre os Resultados<br><br>
+  - Resultado Nacional<br><br>
+  - Sobre os Estados<br><br>
+
+## **Sobre os Resultados** {background-color=""}
+
+- O setor de serviços nacional teve um aumento de 0,3% em dezembro, abaixo da expectativa de mercado de 0,8%, mas três das cinco atividades analisadas cresceram. Com isso, o setor encerrou 2023 com um crescimento de 2,3%, apesar de uma queda de 2% em relação a dezembro de 2022. 
+
+- Em Pernambuco, tanto a receita quanto o volume do setor de serviços tiveram um desempenho anual positivo, com aumentos de 6,45% e 3,34%, respectivamente, refletindo uma tendência positiva em contraste com os resultados mais influenciados pela sazonalidade de final de ano em outras regiões. 
+
+
+
+## **Resultado Nacional** {.smaller}
+
+::: columns
+::: {.column width="50%"}
+<br>
+
+-   O resultado nacional de dezembro, o setor de serviços registrou um aumento de 0,3%, abaixo da expectativa de mercado de 0,8%. Apesar disso, três das cinco atividades analisadas apresentaram crescimento. Com essa segunda alta consecutiva, o setor encerrou o ano de 2023 com um crescimento de 2,3%, porém, houve uma queda de 2% em comparação com dezembro de 2022.
+
+-   Com essa segunda alta consecutiva, o setor encerrou o ano de 2023 com um crescimento de 2,3%, porém, houve uma queda de 2% em comparação com dezembro de 2022.
+
+:::
+
+::: {.column width="50%"}
+::: panel-tabset
+### Receita
+
+```{r}
+tabpms %>%
+  select(date, margem_receita, interanual_receita,
+         anual_receita) %>%
+  tail() %>%
+  kable(digits=2,
+        col.names = c('Data', 'Margem', 'Interanual', 'Anual'),
+        caption='Pesquisa Mensal de Serviços: Variações da Receita')
+
+
+```
+
+
+### Volume
+
+```{r}
+tabpms %>%
+  select(date, margem_volume, interanual_volume,
+         anual_volume) %>%
+  tail() %>%
+  kable(digits=2,
+        col.names = c('Data', 'Margem', 'Interanual', 'Anual'),
+        caption='Pesquisa Mensal de Serviços: Variações do Volume')
+
+```
+
+
+
+### Gráfico
+
+```{r, echo=F, eval=T, results='asis', fig.width=10, fig.height=8, fig.align='center', out.width="1\\linewidth", warning=FALSE, message=FALSE, size='tiny'}
+
+tabpms_long %>%
+  filter(variavel %in% unique(tabpms_long$variavel)[5:10]) %>%
+  ggplot(aes(x=date, y=valor, colour=variavel))+
+  geom_line(size=.8)+
+  geom_hline(yintercept=0, colour='black', linetype='dashed')+
+  facet_wrap(~variavel, scales='free')+
+  theme_clean()+
+  theme(legend.position = 'none')+
+  labs(x='', y='', 
+       title='Pesquisa Mensal de Serviços',
+       caption= foot_ibge)
+```
+
+
+:::
+:::
+:::
+
+
+## **Resumo de Pernambuco** {.smaller}
+
+::: columns
+::: {.column width="50%"}
+<br>
+
+-   O desempenho anual do setor de serviços em Pernambuco foi positivo tanto na receita quanto no volume, registrando um aumento de 6,45% e 3,34%, respectivamente. Esses números refletem uma tendência positiva, enquanto os outros resultados são mais afetados pela sazonalidade associada ao período de fim de ano.
+
+-   Esses números refletem uma tendência positiva, enquanto os outros resultados são mais afetados pela sazonalidade associada ao período de fim de ano
+
+:::
+
+::: {.column width="50%"}
+::: panel-tabset
+### Receita
+
+```{r}
+tabpms_pe %>%
+  select(date, margem_receita, interanual_receita,
+         anual_receita) %>%
+  tail() %>%
+  kable(digits=2,
+        col.names = c('Data', 'Margem', 'Interanual', 'Anual'),
+        caption='Pesquisa Mensal de Serviços: Variações da Receita PE')
+
+```
+
+
+### Volume
+
+```{r}
+
+tabpms_pe %>%
+  select(date, margem_volume, interanual_volume,
+         anual_volume) %>%
+  tail() %>%
+  kable(digits=2,
+        col.names = c('Data', 'Margem', 'Interanual', 'Anual'),
+        caption='Pesquisa Mensal de Serviços: Variações do Volume PE')
+
+```
+
+
+### Gráfico
+
+```{r, echo=F, eval=T, results='asis', fig.width=10, fig.height=8, fig.align='center', out.width="1\\linewidth", warning=FALSE, message=FALSE, size='tiny'}
+tabpms_long %>%
+  filter(variavel %in% unique(tabpms_long$variavel)[5:10]) %>%
+  ggplot(aes(x=date, y=valor, colour=variavel))+
+  geom_line(size=.8)+
+  geom_hline(yintercept=0, colour='black', linetype='dashed')+
+  facet_wrap(~variavel, scales='free')+
+  theme_minimal()+
+  theme(legend.position = 'none')+
+  labs(x='', y='', 
+       title='Pesquisa Mensal de Serviços Pernambuco',
+       caption= foot_ibge)
+
+
+```
+
+
+:::
+:::
+:::
+
+
+
+
